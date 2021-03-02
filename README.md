@@ -9,7 +9,7 @@ Scrape aoe2 stats to json for some analysis later
 conda env create -f environment.yml
 conda activate aoe_elo_notebook
 ```
--Set up the database
+- Set up the database
 ```
 python createDB.py
 ```
