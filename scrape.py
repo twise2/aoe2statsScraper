@@ -42,7 +42,7 @@ if __name__ == '__main__':
     db_path = ("./database/pythonsqlite.db")
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
-    HIGH_WATER_MARK = c.execute('select max(started) as highWaterMark from matchData md').fetchone()[0]
+    HIGH_WATER_MARK = c.execute('select max(started) as highWaterMark from matchData md').fetchone()[0] or 0
 
     data = requests.get('https://aoe2.net/api/strings?game=aoe2de&language=en').json()
     civFile = open("./dataFiles.json", "w")
