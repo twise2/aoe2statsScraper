@@ -52,7 +52,7 @@ if __name__ == '__main__':
         print('High Water Mark', HIGH_WATER_MARK)
         params = {
             'game':'aoe2de',
-            'count':10000,
+            'count':1000,
             'since':HIGH_WATER_MARK
         }
         x = requests.get('https://aoe2.net/api/matches', params)
