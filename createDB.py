@@ -35,7 +35,8 @@ def createPlayerData(conn):
             civ,
             won,
             match_uuid,
-            FOREIGN KEY(match_uuid) REFERENCES matchData(match_uuid)
+            FOREIGN KEY(match_uuid) REFERENCES matchData(match_uuid),
+            PRIMARY KEY(profile_id, slot, match_uuid)
     );
                  """)
 
@@ -81,7 +82,8 @@ def createMatchData(conn):
       visibility,
       opened,
       started,
-      finished
+      finished,
+      PRIMARY KEY(match_uuid)
     );
     """)
 
