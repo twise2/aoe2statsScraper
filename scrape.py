@@ -1,5 +1,4 @@
-import json, requests, pprint, sys
-import time
+import json, requests, pprint, sys, os, time
 import sqlite3
 from sqlite3 import Error
 
@@ -15,6 +14,9 @@ def create_connection(db_file):
         if conn:
             conn.close()
 
+def progress(status, remaining, total):
+    print('\r', end='')                     # use '\r' to go back
+    print(f'Copied {total-remaining} of {total} pages...', end='', flush=True)
 
 def insertBatch(curs, playerData, matchData):
     #playerData
@@ -32,15 +34,41 @@ def insertBatch(curs, playerData, matchData):
     #for value in playerDataValues:
     #    print('values', value)
     #insert the data
-    curs.executemany("INSERT INTO playerData("+playerDataKeys+") VALUES (" + playerQuestionMarks + ")", playerDataValues)
-    curs.executemany("INSERT INTO matchData("+matchDataKeys+") VALUES (" + matchQuestionMarks + ")", matchDataValues)
-
+    try:
+        curs.executemany("INSERT INTO matchData("+matchDataKeys+") VALUES (" + matchQuestionMarks + ")", matchDataValues)
+        curs.executemany("INSERT INTO playerData("+playerDataKeys+") VALUES (" + playerQuestionMarks + ")", playerDataValues)
+    except:
+        #print('Entire batch failed, inserting individually')
+        for each in matchDataValues:
+            try:
+                curs.executemany("INSERT INTO matchData("+matchDataKeys+") VALUES (" + matchQuestionMarks + ")", [each])
+            except:
+                #print("failed to insert ", each)
+                pass
+        for each in playerDataValues:
+            try:
+                curs.executemany("INSERT INTO playerData("+playerDataKeys+") VALUES (" + playerQuestionMarks + ")", [each])
+            except:
+                #print("failed to insert ", each)
+                pass
 
 if __name__ == '__main__':
     #TODO set high water mark to select max(xxx)
     stop = False
     db_path = ("./database/pythonsqlite.db")
     conn = sqlite3.connect(db_path)
+
+    #create backup of DB file
+    backup_db_path = ("./database/pythonsqlite.db" + ".bak")
+    conn = sqlite3.connect(db_path)
+    if os.path.exists(backup_db_path):
+        os.remove(backup_db_path) # remove last db dump
+    bck = sqlite3.connect(backup_db_path)
+    with bck:
+        conn.backup(bck, pages=1, progress=progress)
+    bck.close()
+
+    #start scraping to non-backup db
     c = conn.cursor()
     HIGH_WATER_MARK = c.execute('select max(started) as highWaterMark from matchData md').fetchone()[0] or 0
 
