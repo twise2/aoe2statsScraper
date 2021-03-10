@@ -95,6 +95,8 @@ if __name__ == '__main__':
     createMatchData(conn)
     conn.execute('CREATE UNIQUE INDEX ix_match_uuid_matchData ON matchData (match_uuid);')
     conn.execute('CREATE INDEX ix_match_started_matchData ON matchData (started);')
+    conn.execute('CREATE INDEX ix_num_players_matchData ON matchData (num_players);')
+    conn.execute('CREATE INDEX ix_ranked_matchData ON matchData (ranked);')
     createPlayerData(conn)
     conn.execute('CREATE INDEX ix_match_uuid_playerData ON playerData (match_uuid);')
     conn.execute('CREATE INDEX ix_name_playerData ON playerData (name);')
