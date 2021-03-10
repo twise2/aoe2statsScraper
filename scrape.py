@@ -16,7 +16,7 @@ def create_connection(db_file):
 
 def progress(status, remaining, total):
     print('\r', end='')                     # use '\r' to go back
-    print(f'Copied {total-remaining} of {total} pages...', end='', flush=True)
+    print(f'{"{:.2%}".format(float(total-remaining)/total)} backed up...', end='', flush=True)
 
 def insertBatch(curs, playerData, matchData):
     #playerData
@@ -29,11 +29,6 @@ def insertBatch(curs, playerData, matchData):
     matchQuestionMarks = ','.join('?' for each in list(matchData[0]))
     matchDataValues = [tuple(dic.values()) for dic in matchData]
 
-    #print('playerDataKeys', playerDataKeys)
-    #print('playerQuestionMarks', playerQuestionMarks)
-    #for value in playerDataValues:
-    #    print('values', value)
-    #insert the data
     try:
         curs.executemany("INSERT INTO matchData("+matchDataKeys+") VALUES (" + matchQuestionMarks + ")", matchDataValues)
         curs.executemany("INSERT INTO playerData("+playerDataKeys+") VALUES (" + playerQuestionMarks + ")", playerDataValues)
@@ -51,33 +46,50 @@ def insertBatch(curs, playerData, matchData):
             except:
                 #print("failed to insert ", each)
                 pass
+def backUp(db_path, conn):
+    #create backup of DB file
+    print('Backing up', db_path)
+    backup_db_path = (db_path + ".bak")
+    conn = sqlite3.connect(db_path)
+    if os.path.exists(backup_db_path):
+        os.rename(backup_db_path, backup_db_path+'_old') #remove last db dump to an "old version"
+    bck = sqlite3.connect(backup_db_path)
+    with bck:
+        conn.backup(bck, pages=1, progress=progress)
+    bck.close()
+    print('[Done]')
+
+
+def saveDataFiles():
+    print('Fetching Data Files...', end='')
+    data = requests.get('https://aoe2.net/api/strings?game=aoe2de&language=en').json()
+    civFile = open("./dataFiles.json", "w")
+    civFile.write(json.dumps(data, indent=4))
+    print('[Done]')
 
 if __name__ == '__main__':
     #TODO set high water mark to select max(xxx)
     stop = False
     db_path = ("./database/pythonsqlite.db")
     conn = sqlite3.connect(db_path)
-
-    #create backup of DB file
-    backup_db_path = ("./database/pythonsqlite.db" + ".bak")
-    conn = sqlite3.connect(db_path)
-    if os.path.exists(backup_db_path):
-        os.remove(backup_db_path) # remove last db dump
-    bck = sqlite3.connect(backup_db_path)
-    with bck:
-        conn.backup(bck, pages=1, progress=progress)
-    bck.close()
-
-    #start scraping to non-backup db
+    backUp(db_path, conn)
+    saveDataFiles()
+    print('Getting High Water Mark...', end='')
     c = conn.cursor()
     HIGH_WATER_MARK = c.execute('select max(started) as highWaterMark from matchData md').fetchone()[0] or 0
-
-    data = requests.get('https://aoe2.net/api/strings?game=aoe2de&language=en').json()
-    civFile = open("./dataFiles.json", "w")
-    civFile.write(json.dumps(data, indent=4))
-
+    STARTING_HIGH_WATER_MARK = HIGH_WATER_MARK
+    EPOCH_TIME_AT_START = int(time.time())
+    print('[Done]')
+    print('Starting Scrape. Current Epoch Time:', EPOCH_TIME_AT_START)
     while(not stop):
-        print('High Water Mark', HIGH_WATER_MARK)
+        #If starting at zero, set start to high water mark
+        if(HIGH_WATER_MARK != 0 and STARTING_HIGH_WATER_MARK == 0):
+            STARTING_HIGH_WATER_MARK = HIGH_WATER_MARK
+        PERCENT_FINISHED = float(HIGH_WATER_MARK - STARTING_HIGH_WATER_MARK) / ((int(time.time()) - STARTING_HIGH_WATER_MARK) or 1)
+        print('\r', end='')
+        print(f'{HIGH_WATER_MARK} {"{:.2%}".format(PERCENT_FINISHED)} scraped...', end='', flush=True)
+
+        #scraping params
         params = {
             'game':'aoe2de',
             'count':1000,
@@ -90,7 +102,10 @@ if __name__ == '__main__':
             #write x to file long term
             playerBatch = []
             matchBatch = []
-            for each in json.loads(x.content):
+            data = json.loads(x.content)
+            if(len(data) == 0):
+                stop = True
+            for each in data:
                 if(each['started'] > HIGH_WATER_MARK):
                     newHighWaterMark = each['started']
                 matchData = each
@@ -105,7 +120,9 @@ if __name__ == '__main__':
             if(newHighWaterMark > HIGH_WATER_MARK):
                 HIGH_WATER_MARK = newHighWaterMark
             else:
-                failed = True
+                stop = True
         time.sleep(.5)
+    print('[Done]')
     conn.close()
+    print('Database Is Up To Date')
 
