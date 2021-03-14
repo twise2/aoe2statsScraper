@@ -17,6 +17,7 @@ def create_connection(db_file):
 def createPlayerData(conn):
     conn.execute("""
         CREATE TABLE playerData(
+            player_match_id INTEGER PRIMARY KEY AUTOINCREMENT,
             profile_id,
             steam_id,
             name,
@@ -36,7 +37,7 @@ def createPlayerData(conn):
             won,
             match_uuid,
             FOREIGN KEY(match_uuid) REFERENCES matchData(match_uuid),
-            PRIMARY KEY(profile_id, slot, match_uuid)
+            UNIQUE(profile_id, slot, match_uuid)
     );
                  """)
 
@@ -97,11 +98,17 @@ if __name__ == '__main__':
     conn.execute('CREATE INDEX ix_match_started_matchData ON matchData (started);')
     conn.execute('CREATE INDEX ix_num_players_matchData ON matchData (num_players);')
     conn.execute('CREATE INDEX ix_ranked_matchData ON matchData (ranked);')
+    conn.execute('create index ix_match_rank_one_v_one_matchData_index on matchData(match_uuid, num_players, ranked)')
+    conn.execute('create index ix_match_rank_one_v_one_2_matchData_index on matchData(num_players, ranked)')
+
+
     createPlayerData(conn)
     conn.execute('CREATE INDEX ix_match_uuid_playerData ON playerData (match_uuid);')
     conn.execute('CREATE INDEX ix_name_playerData ON playerData (name);')
     conn.execute('CREATE INDEX ix_profile_id_playerData ON playerData (profile_id);')
     conn.execute('CREATE INDEX ix_rating_playerData ON playerData (rating);')
+    conn.execute('CREATE INDEX ix_rating_matchid_playerData ON playerData (rating, match_uuid);')
+    conn.execute('CREATE INDEX ix_rating_player_data_index ON playerData (rating, profile_id);')
     cursor = conn.execute('select * from matchData')
     print('columns', list(map(lambda x: x[0], cursor.description)))
     cursor = conn.execute('select * from playerData')
