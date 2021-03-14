@@ -100,6 +100,7 @@ if __name__ == '__main__':
     conn.execute('CREATE INDEX ix_ranked_matchData ON matchData (ranked);')
     conn.execute('create index ix_match_rank_one_v_one_matchData_index on matchData(match_uuid, num_players, ranked)')
     conn.execute('create index ix_match_rank_one_v_one_2_matchData_index on matchData(num_players, ranked)')
+    conn.execute('create index ix_match_uuid_rank_one_v_one_2_matchData_index on matchData(num_players, match_uuid)')
 
 
     createPlayerData(conn)
